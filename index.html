@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="day">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="theme-color" content="#f3e9d5" />
+  <title>Weather — Today &amp; Next 5 Days</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+
+    <header class="header">
+      <form class="search" id="search-form" autocomplete="off" role="search">
+        <span class="search__field">
+          <input
+            class="search__input"
+            id="search-input"
+            type="search"
+            placeholder="search a city…"
+            aria-label="Search for a city"
+          />
+        </span>
+        <button class="ink-link" type="submit">look it up</button>
+        <button class="ink-link ink-link--quiet" type="button" id="locate-button" title="Use my location">near me</button>
+      </form>
+      <p class="header__place" id="place">Athens, Greece</p>
+    </header>
+
+    <section class="today" aria-labelledby="today-label">
+      <p class="today__label" id="today-label">today</p>
+      <div class="today__icon" id="today-icon"></div>
+      <p class="today__temp" id="today-temp">--°</p>
+      <p class="today__condition" id="today-condition">&nbsp;</p>
+
+      <dl class="today__meta">
+        <div class="meta">
+          <dt>feels like</dt>
+          <dd id="today-feels">--°</dd>
+        </div>
+        <div class="meta">
+          <dt>rain chance</dt>
+          <dd id="today-rain">--%</dd>
+        </div>
+        <div class="meta">
+          <dt>high / low</dt>
+          <dd id="today-range">--° / --°</dd>
+        </div>
+        <div class="meta">
+          <dt>wind</dt>
+          <dd id="today-wind">-- km/h</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="forecast" aria-labelledby="forecast-title">
+      <h2 class="forecast__title" id="forecast-title">next 5 days</h2>
+      <ul class="forecast__list" id="forecast-list"></ul>
+    </section>
+
+    <p class="status" id="status" role="status"></p>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
