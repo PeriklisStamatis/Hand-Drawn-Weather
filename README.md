@@ -2,7 +2,7 @@
 
 A tiny static weather app that looks like a page from someone's notebook:
 cream paper with a heavy grain, ruled lines, handwritten type, ink underlines
-and photos taped into little frames.
+and photos taped into little frames. It speaks English and Greek.
 
 Weather data comes from [Open-Meteo](https://open-meteo.com/) — no API key, no
 build step, no dependencies. Fonts are bundled in `fonts/`, so nothing is
@@ -20,6 +20,30 @@ python3 -m http.server 8000
 
 It starts on Athens. Type a city and hit `look it up`, or press `near me` to use
 your current position.
+
+## English / Greek
+
+The `english · ελληνικά` switch next to the place name flips the whole page:
+labels, condition names, weekday and date formatting, and the language sent to
+the Open-Meteo geocoder, so city names come back as `Αθήνα, Ελλάδα` instead of
+`Athens, Greece` and vice versa. The choice is kept in `localStorage`; on a
+first visit the page follows the browser's language.
+
+All of the text lives in the `STRINGS` object at the top of `app.js` — two
+objects, `en` and `el`. To add a third language, copy one of them and add a
+matching entry to `LOCALES` and to the language switch in `index.html`.
+
+Two fonts are used, chosen by the `data-lang` attribute on `<html>`:
+
+| Language | Font | Notes |
+| -------- | ---- | ----- |
+| English  | **Beth Ellen** | Latin only, single weight |
+| Greek    | **Mynerve**    | Greek + Latin, single weight |
+
+Both are SIL Open Font Licensed and self-hosted as woff2 in `fonts/`
+(`BethEllen-OFL.txt`, `Mynerve-OFL.txt`). Because both faces are in the font
+stack and each `@font-face` declares its `unicode-range`, a Greek name on the
+English page still gets Greek letterforms instead of a system font.
 
 ## How the icon is chosen
 
@@ -75,6 +99,7 @@ Everything lives at the top of `styles.css`:
 | `--pencil` | border colour of cards and frames |
 | `--mat` | colour behind the icon photos |
 | `--vignette` | how much the page edges darken |
+| `--font-hand`, `--font-display` | the handwriting (swapped per language) |
 
 The paper grain is four stacked `background-image` layers on `html` — three
 brown-tinted SVG noise layers (fine tooth, fibres, broad fibres) plus faint
@@ -89,7 +114,7 @@ paper.
 | `styles.css` | Paper, ink, frames, layout |
 | `app.js`     | API calls, icon choice, rendering |
 | `icons/`     | The eight weather photos (JPG) |
-| `fonts/`     | Caveat + Patrick Hand (woff2, self-hosted) |
+| `fonts/`     | Beth Ellen + Mynerve (woff2, self-hosted) and their OFL licences |
 
 ## License
 

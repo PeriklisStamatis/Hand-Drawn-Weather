@@ -13,6 +13,10 @@
    white background in the JPG blends into the page.
 
    If a file is missing, an emoji is shown instead.
+
+   The page runs in English or Greek; see STRINGS below for every bit
+   of text. The language also picks the font stack in styles.css
+   (Beth Ellen for Latin, Mynerve for Greek).
 ------------------------------------------------------------------ */
 
 const ICONS = {
@@ -29,17 +33,77 @@ const FALLBACK_ICONS = {
   rain:    { day: '🌧️', night: '🌧️' },
 };
 
-const LABELS = {
-  clear: 'Clear sky',
-  cloudy: 'Cloudy',
-  drizzle: 'Light drizzle',
-  rain: 'Heavy rain',
+const STRINGS = {
+  en: {
+    title: 'Weather — Today & Next 5 Days',
+    today: 'today',
+    feelsLike: 'feels like',
+    rainChance: 'rain chance',
+    highLow: 'high / low',
+    wind: 'wind',
+    next5: 'next 5 days',
+    searchPlaceholder: 'search a city…',
+    searchLabel: 'Search for a city',
+    lookItUp: 'look it up',
+    nearMe: 'near me',
+    nearMeTitle: 'Use my location',
+    yourLocation: 'Your location',
+    defaultPlace: 'Athens, Greece',
+    rainSuffix: 'rain',
+    conditions: {
+      clear: 'Clear sky',
+      cloudy: 'Cloudy',
+      drizzle: 'Light drizzle',
+      rain: 'Heavy rain',
+    },
+    loading: 'loading…',
+    updated: 'updated {time}',
+    loadError: 'couldn’t load the weather — check your connection and try again.',
+    looking: 'looking for “{query}”…',
+    notFound: 'couldn’t find “{query}”',
+    searchFailed: 'search failed — try again',
+    finding: 'finding you…',
+    noLocation: 'no location — showing athens instead',
+  },
+  el: {
+    title: 'Καιρός — σήμερα & οι επόμενες 5 ημέρες',
+    today: 'σήμερα',
+    feelsLike: 'αίσθηση',
+    rainChance: 'πιθανότητα βροχής',
+    highLow: 'μέγιστη / ελάχιστη',
+    wind: 'άνεμος',
+    next5: 'επόμενες 5 ημέρες',
+    searchPlaceholder: 'αναζήτηση πόλης…',
+    searchLabel: 'Αναζήτηση πόλης',
+    lookItUp: 'ψάξε',
+    nearMe: 'κοντά μου',
+    nearMeTitle: 'Χρήση της θέσης μου',
+    yourLocation: 'η θέση σου',
+    defaultPlace: 'Αθήνα, Ελλάδα',
+    rainSuffix: 'βροχή',
+    conditions: {
+      clear: 'καθαρός ουρανός',
+      cloudy: 'συννεφιά',
+      drizzle: 'ψιλόβροχο',
+      rain: 'δυνατή βροχή',
+    },
+    loading: 'φόρτωση…',
+    updated: 'ενημέρωση {time}',
+    loadError: 'δεν φόρτωσε ο καιρός — έλεγξε τη σύνδεση και δοκίμασε ξανά',
+    looking: 'ψάχνω «{query}»…',
+    notFound: 'δεν βρήκα «{query}»',
+    searchFailed: 'η αναζήτηση απέτυχε — δοκίμασε ξανά',
+    finding: 'εντοπισμός θέσης…',
+    noLocation: 'χωρίς τοποθεσία — δείχνω Αθήνα',
+  },
 };
+
+const LOCALES = { en: 'en-GB', el: 'el-GR' };
 
 /* Chance of rain (%) needed to step up to the next icon. */
 const RAIN_STEPS = { cloudy: 20, drizzle: 50, rain: 80 };
 
-const DEFAULT_PLACE = { name: 'Athens, Greece', latitude: 37.9838, longitude: 23.7275 };
+const DEFAULT_PLACE = { latitude: 37.9838, longitude: 23.7275 };
 
 const $ = (id) => document.getElementById(id);
 
@@ -59,6 +123,51 @@ const el = {
   forecastList: $('forecast-list'),
 };
 
+let lang = document.documentElement.dataset.lang === 'el' ? 'el' : 'en';
+let currentPlace = { kind: 'default', ...DEFAULT_PLACE };
+let lastData = null;
+let lastUpdated = '';
+
+/* ------------------------------------------------------------------
+   Text
+------------------------------------------------------------------ */
+
+function t(key) {
+  return STRINGS[lang][key] ?? STRINGS.en[key];
+}
+
+function tpl(key, vars) {
+  return t(key).replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '');
+}
+
+function applyStaticText() {
+  document.documentElement.lang = lang;
+  document.documentElement.dataset.lang = lang;
+  document.title = t('title');
+
+  for (const node of document.querySelectorAll('[data-i18n]')) {
+    node.textContent = t(node.dataset.i18n);
+  }
+  for (const node of document.querySelectorAll('[data-i18n-placeholder]')) {
+    node.placeholder = t(node.dataset.i18nPlaceholder);
+  }
+  for (const node of document.querySelectorAll('[data-i18n-aria]')) {
+    node.setAttribute('aria-label', t(node.dataset.i18nAria));
+  }
+  for (const node of document.querySelectorAll('[data-i18n-title]')) {
+    node.title = t(node.dataset.i18nTitle);
+  }
+  for (const button of document.querySelectorAll('[data-lang-btn]')) {
+    button.setAttribute('aria-pressed', String(button.dataset.langBtn === lang));
+  }
+}
+
+function placeLabel() {
+  if (currentPlace.kind === 'search') return currentPlace.name;
+  if (currentPlace.kind === 'geo') return t('yourLocation');
+  return t('defaultPlace');
+}
+
 /* ------------------------------------------------------------------
    Helpers
 ------------------------------------------------------------------ */
@@ -76,13 +185,14 @@ function iconKind(chance) {
 /* Builds a framed picture, falling back to an emoji if the file is missing. */
 function createIcon(kind, isDay) {
   const variant = isDay ? 'day' : 'night';
+  const label = t('conditions')[kind];
 
   const frame = document.createElement('div');
   frame.className = 'frame';
 
   const img = document.createElement('img');
   img.className = 'icon';
-  img.alt = LABELS[kind];
+  img.alt = label;
   img.width = 320;
   img.height = 320;
   img.decoding = 'async';
@@ -92,7 +202,7 @@ function createIcon(kind, isDay) {
     const span = document.createElement('span');
     span.className = 'icon icon--fallback';
     span.setAttribute('role', 'img');
-    span.setAttribute('aria-label', LABELS[kind]);
+    span.setAttribute('aria-label', label);
     span.textContent = FALLBACK_ICONS[kind][variant];
     frame.replaceChildren(span);
   };
@@ -141,13 +251,21 @@ async function searchPlace(query) {
   const params = new URLSearchParams({
     name: query,
     count: '1',
-    language: 'en',
+    language: lang,
     format: 'json',
   });
 
   const data = await fetchJson(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
   return data.results?.[0] ?? null;
 }
+
+async function fetchPlaceById(id) {
+  const params = new URLSearchParams({ id, language: lang });
+  const data = await fetchJson(`https://geocoding-api.open-meteo.com/v1/get?${params}`);
+  return data?.id ? data : null;
+}
+
+const placeName = (hit) => [hit.name, hit.country].filter(Boolean).join(', ');
 
 /* ------------------------------------------------------------------
    Rendering
@@ -162,7 +280,7 @@ function renderToday(current, daily) {
 
   el.todayIcon.replaceChildren(createIcon(kind, isDay));
   el.todayTemp.textContent = degrees(current.temperature_2m);
-  el.todayCondition.textContent = LABELS[kind];
+  el.todayCondition.textContent = t('conditions')[kind];
   el.todayFeels.textContent = degrees(current.apparent_temperature);
   el.todayRain.textContent = `${round(chance)}%`;
   el.todayRange.textContent = `${degrees(daily.temperature_2m_max[0])} / ${degrees(daily.temperature_2m_min[0])}`;
@@ -170,8 +288,9 @@ function renderToday(current, daily) {
 }
 
 function renderForecast(daily) {
-  const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-  const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+  const locale = LOCALES[lang];
+  const dayFormat = new Intl.DateTimeFormat(locale, { weekday: 'short' });
+  const dateFormat = new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' });
 
   const cards = daily.time.slice(1, 6).map((isoDate, index) => {
     const dayIndex = index + 1;
@@ -206,7 +325,7 @@ function renderForecast(daily) {
 
     const rain = document.createElement('p');
     rain.className = 'card__rain';
-    rain.textContent = `${round(chance)}% rain`;
+    rain.textContent = `${round(chance)}% ${t('rainSuffix')}`;
 
     card.append(day, dateLabel, icon, temp, rain);
     return card;
@@ -215,23 +334,70 @@ function renderForecast(daily) {
   el.forecastList.replaceChildren(...cards);
 }
 
+function render(data) {
+  renderToday(data.current, data.daily);
+  renderForecast(data.daily);
+}
+
 /* ------------------------------------------------------------------
    Flow
 ------------------------------------------------------------------ */
 
-async function loadPlace(place) {
-  el.place.textContent = place.name;
-  setStatus('loading…');
+async function loadPlace() {
+  el.place.textContent = placeLabel();
+  setStatus(t('loading'));
 
   try {
-    const data = await fetchWeather(place);
-    renderToday(data.current, data.daily);
-    renderForecast(data.daily);
-    const time = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    setStatus(`updated ${time}`);
+    const data = await fetchWeather(currentPlace);
+    lastData = data;
+    lastUpdated = new Date().toLocaleTimeString(LOCALES[lang], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+    render(data);
+    setStatus(tpl('updated', { time: lastUpdated }));
   } catch (error) {
     console.error(error);
-    setStatus('couldn’t load the weather — check your connection and try again.', true);
+    setStatus(t('loadError'), true);
+  }
+}
+
+async function setLanguage(next) {
+  if (next === lang) return;
+
+  lang = next;
+  try {
+    localStorage.setItem('weather-lang', lang);
+  } catch (error) {
+    /* private mode — the choice just won't be remembered */
+  }
+
+  applyStaticText();
+  el.place.textContent = placeLabel();
+
+  // A searched city should come back in the new language too. Looking it up
+  // by id keeps the exact same place (a Greek name can't be searched in
+  // English, for example).
+  if (currentPlace.kind === 'search') {
+    try {
+      const hit = currentPlace.id
+        ? await fetchPlaceById(currentPlace.id)
+        : await searchPlace(currentPlace.query);
+      if (hit) {
+        currentPlace.name = placeName(hit);
+        el.place.textContent = placeLabel();
+      }
+    } catch (error) {
+      /* keep the name we already have */
+    }
+  }
+
+  if (lastData) {
+    render(lastData);
+    if (lastUpdated) setStatus(tpl('updated', { time: lastUpdated }));
+  } else {
+    await loadPlace();
   }
 }
 
@@ -244,7 +410,6 @@ function getBrowserPlace() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => resolve({
-        name: 'Your location',
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
       }),
@@ -259,37 +424,49 @@ el.searchForm.addEventListener('submit', async (event) => {
   const query = el.searchInput.value.trim();
   if (!query) return;
 
-  setStatus(`looking for “${query}”…`);
+  setStatus(tpl('looking', { query }));
 
   try {
     const hit = await searchPlace(query);
     if (!hit) {
-      setStatus(`couldn’t find “${query}”`, true);
+      setStatus(tpl('notFound', { query }), true);
       return;
     }
 
     el.searchInput.value = '';
-    await loadPlace({
-      name: [hit.name, hit.country].filter(Boolean).join(', '),
+    currentPlace = {
+      kind: 'search',
+      id: hit.id,
+      query,
+      name: placeName(hit),
       latitude: hit.latitude,
       longitude: hit.longitude,
-    });
+    };
+    await loadPlace();
   } catch (error) {
     console.error(error);
-    setStatus('search failed — try again', true);
+    setStatus(t('searchFailed'), true);
   }
 });
 
 el.locateButton.addEventListener('click', async () => {
-  setStatus('finding you…');
+  setStatus(t('finding'));
 
   try {
-    await loadPlace(await getBrowserPlace());
+    const position = await getBrowserPlace();
+    currentPlace = { kind: 'geo', ...position };
+    await loadPlace();
   } catch {
-    setStatus('no location — showing athens instead', true);
-    await loadPlace(DEFAULT_PLACE);
+    currentPlace = { kind: 'default', ...DEFAULT_PLACE };
+    await loadPlace();
+    setStatus(t('noLocation'), true);
   }
 });
 
-/* Start with the default city; the 📍 button switches to geolocation. */
-loadPlace(DEFAULT_PLACE);
+for (const button of document.querySelectorAll('[data-lang-btn]')) {
+  button.addEventListener('click', () => setLanguage(button.dataset.langBtn));
+}
+
+/* Start with the default city; the "near me" button switches to geolocation. */
+applyStaticText();
+loadPlace();

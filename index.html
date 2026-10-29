@@ -1,12 +1,29 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="day">
+<html lang="en" data-theme="day" data-lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
   <meta name="theme-color" content="#f3e9d5" />
   <title>Weather — Today &amp; Next 5 Days</title>
+
+  <link rel="preload" href="fonts/BethEllen.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/Mynerve-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- pick the language before the page paints, so the right font is used -->
+  <script>
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem('weather-lang'); } catch (e) {}
+      var browser = (navigator.language || '').toLowerCase();
+      var lang = saved === 'el' || saved === 'en'
+        ? saved
+        : (browser.indexOf('el') === 0 ? 'el' : 'en');
+      document.documentElement.lang = lang;
+      document.documentElement.dataset.lang = lang;
+    })();
+  </script>
 </head>
 <body>
   <main class="app">
@@ -20,42 +37,59 @@
             type="search"
             placeholder="search a city…"
             aria-label="Search for a city"
+            data-i18n-placeholder="searchPlaceholder"
+            data-i18n-aria="searchLabel"
           />
         </span>
-        <button class="ink-link" type="submit">look it up</button>
-        <button class="ink-link ink-link--quiet" type="button" id="locate-button" title="Use my location">near me</button>
+        <button class="ink-link" type="submit" data-i18n="lookItUp">look it up</button>
+        <button
+          class="ink-link ink-link--quiet"
+          type="button"
+          id="locate-button"
+          title="Use my location"
+          data-i18n="nearMe"
+          data-i18n-title="nearMeTitle"
+        >near me</button>
       </form>
-      <p class="header__place" id="place">Athens, Greece</p>
+
+      <div class="header__meta">
+        <p class="header__place" id="place">Athens, Greece</p>
+        <div class="lang-switch" role="group" aria-label="Language">
+          <button class="lang-switch__button" type="button" data-lang-btn="en" aria-pressed="true" lang="en">english</button>
+          <span class="lang-switch__sep" aria-hidden="true">·</span>
+          <button class="lang-switch__button" type="button" data-lang-btn="el" aria-pressed="false" lang="el">ελληνικά</button>
+        </div>
+      </div>
     </header>
 
     <section class="today" aria-labelledby="today-label">
-      <p class="today__label" id="today-label">today</p>
+      <p class="today__label" id="today-label" data-i18n="today">today</p>
       <div class="today__icon" id="today-icon"></div>
       <p class="today__temp" id="today-temp">--°</p>
       <p class="today__condition" id="today-condition">&nbsp;</p>
 
       <dl class="today__meta">
         <div class="meta">
-          <dt>feels like</dt>
+          <dt data-i18n="feelsLike">feels like</dt>
           <dd id="today-feels">--°</dd>
         </div>
         <div class="meta">
-          <dt>rain chance</dt>
+          <dt data-i18n="rainChance">rain chance</dt>
           <dd id="today-rain">--%</dd>
         </div>
         <div class="meta">
-          <dt>high / low</dt>
+          <dt data-i18n="highLow">high / low</dt>
           <dd id="today-range">--° / --°</dd>
         </div>
         <div class="meta">
-          <dt>wind</dt>
+          <dt data-i18n="wind">wind</dt>
           <dd id="today-wind">-- km/h</dd>
         </div>
       </dl>
     </section>
 
     <section class="forecast" aria-labelledby="forecast-title">
-      <h2 class="forecast__title" id="forecast-title">next 5 days</h2>
+      <h2 class="forecast__title" id="forecast-title" data-i18n="next5">next 5 days</h2>
       <ul class="forecast__list" id="forecast-list"></ul>
     </section>
 
